@@ -47,81 +47,41 @@ func (r *AwsSecurityGroupEgressRule) Link() string {
 
 // Check checks whether ...
 func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
-	// This rule is an example to get a top-level resource attribute.
+
 	resources, err := runner.GetResourceContent(r.resourceType, &hclext.BodySchema{
 		Blocks: []hclext.BlockSchema{
-			{Type: r.subResourceType},
-		},
-		Attributes: []hclext.AttributeSchema{
-			{Name: r.attributeName},
+			{
+				Type: r.subResourceType,
+				Body: &hclext.BodySchema{
+					Attributes: []hclext.AttributeSchema{
+						{Name: r.attributeName},
+					},
+				},
+			},
 		},
 	}, nil)
+
 	if err != nil {
 		return err
 	}
-
+	fmt.Printf("\n RESOURCES: %+v\n\n", resources.Blocks)
 	for _, resource := range resources.Blocks {
-		attribute, exists := resource.Body.Attributes[r.attributeName]
-		if !exists {
-			continue
-		}
-
-		err := runner.EvaluateExpr(attribute.Expr, func(cidr string) error {
-			if cidr != "[0.0.0.0/0]" {
+		fmt.Printf("Block: %+v\n\n", resource.Body)
+		for _, block := range resource.Body.Blocks {
+			fmt.Printf("\n.......Block: %+v\n\n", block.Body.Attributes[r.attributeName])
+			value, ok := block.Body.Attributes[r.attributeName]
+			if ok && value.Expr.Variables() != nil {
+				fmt.Printf("Value %s\n\n\n", value.Expr.Variables())
+			} else {
 				runner.EmitIssue(
 					r,
-					fmt.Sprintf("\"%s\" is an invalid cidr block.", cidr),
-					attribute.Expr.Range(),
+					fmt.Sprintf("\"%s\" can't be empty", r.attributeName),
+					block.DefRange,
 				)
 			}
-			return nil
-		}, nil)
-		if err != nil {
-			return err
+
 		}
 	}
 
 	return nil
-
-	// resources, err := runner.GetResourceContent(r.resourceType, &hclext.BodySchema{
-	// 	Blocks: []hclext.BlockSchema{
-	// 		{
-	// 			Type: r.subResourceType,
-	// 			Body: &hclext.BodySchema{
-	// 				Attributes: []hclext.AttributeSchema{
-	// 					{Name: r.attributeName},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }, nil)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for _, resource := range resources.Blocks {
-	// 	for _, rule := range resource.Body.Blocks {
-	// 		attribute, exists := rule.Body.Attributes["egress"]
-	// 		if !exists {
-	// 			continue
-	// 		}
-
-	// 		err := runner.EvaluateExpr(attribute.Expr, func(cidr string) error {
-	// 			if cidr != "0.0.0.0/0" {
-	// 				runner.EmitIssue(
-	// 					r,
-	// 					fmt.Sprintf("\"%s\" is an invalid cidr block.", cidr),
-	// 					attribute.Expr.Range(),
-	// 				)
-	// 			}
-	// 			return nil
-	// 		}, nil)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
-	// return nil
 }
