@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"fmt"
 	"testing"
 
 	hcl "github.com/hashicorp/hcl/v2"
@@ -61,13 +60,10 @@ resource "aws_security_group" "this" {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			fmt.Printf("%s", test.Content)
 			runner := helper.TestRunner(t, map[string]string{"resource.tf": test.Content})
-
 			if err := rule.Check(runner); err != nil {
 				t.Fatalf("Unexpected error occurred: %s", err)
 			}
-
 			helper.AssertIssues(t, test.Expected, runner.Issues)
 		})
 	}

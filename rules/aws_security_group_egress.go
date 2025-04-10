@@ -64,22 +64,19 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n RESOURCES: %+v\n\n", resources.Blocks)
+
 	for _, resource := range resources.Blocks {
-		fmt.Printf("Block: %+v\n\n", resource.Body)
+		// fmt.Printf("Block: %+v\n\n", resource.Body)
 		for _, block := range resource.Body.Blocks {
-			fmt.Printf("\n.......Block: %+v\n\n", block.Body.Attributes[r.attributeName])
+			// fmt.Printf("\n.......Block: %+v\n\n", block.Body.Attributes[r.attributeName])
 			value, ok := block.Body.Attributes[r.attributeName]
-			if ok && value.Expr.Variables() != nil {
-				fmt.Printf("Value %s\n\n\n", value.Expr.Variables())
-			} else {
+			if !ok || value.Expr.Variables() == nil {
 				runner.EmitIssue(
 					r,
 					fmt.Sprintf("\"%s\" can't be empty", r.attributeName),
 					block.DefRange,
 				)
 			}
-
 		}
 	}
 
