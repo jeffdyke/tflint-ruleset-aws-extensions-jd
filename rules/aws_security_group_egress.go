@@ -1,8 +1,9 @@
 package rules
 
 import (
-	"fmt"
+	"log"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 	"github.com/terraform-linters/tflint-ruleset-terraform/project"
@@ -47,6 +48,7 @@ func (r *AwsSecurityGroupEgressRule) Link() string {
 
 // Check checks whether ...
 func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
+	// resourceFile := "resource.tf"
 
 	resources, err := runner.GetResourceContent(r.resourceType, &hclext.BodySchema{
 		Blocks: []hclext.BlockSchema{
@@ -64,21 +66,45 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 	if err != nil {
 		return err
 	}
+	// got := []string{}
 
-	for _, resource := range resources.Blocks {
-		// fmt.Printf("Block: %+v\n\n", resource.Body)
-		for _, block := range resource.Body.Blocks {
-			// fmt.Printf("\n.......Block: %+v\n\n", block.Body.Attributes[r.attributeName])
-			value, ok := block.Body.Attributes[r.attributeName]
-			if !ok || value.Expr.Variables() == nil {
-				runner.EmitIssue(
-					r,
-					fmt.Sprintf("\"%s\" can't be empty", r.attributeName),
-					block.DefRange,
-				)
+	// diag := resources.WalkAttributes(func(a *Attribute) &hcl.Diagnostics {
+
+	// 	got = append(got, a.Name)
+	// 	return nil
+	// })
+	type TraverseLocal struct {
+		isTraverser struct{}
+		Name        string
+		SrcRange    string
+	}
+
+	// var l []TraverseLocal
+
+	for _, block := range resources.Blocks {
+		for _, attrs := range block.Body.Blocks.OfType("egress")[0].Body.Attributes {
+			log.Printf("CIDR: %+v\n\n", attrs.Expr.Variables()[0])
+			rt, d := hcl.RelTraversalForExpr(attrs.Expr)
+			for _, t := range rt {
+				root := t.(hcl.TraverseAttr)
+				log.Printf("RT BITCH: %+v\n", root.Name)
 			}
+
+			log.Printf("Item: %+v\n", d)
+			// for _, item := range attrs.Expr.Variables()[0] {
+			// 	get, _ := item.TraversalStep(cty.Value{})
+			// 	log.Printf("Item: %+v\n", get)
+			// }
+
 		}
 	}
+	// got := []string{}
+	// diag := resources.WalkAttributes(func(a *Attribute) hcl.Diagnostics {
+	// 	got = append(got, a.Name)
+	// 	return nil
+	// })
+	// log.Printf("walked attrs %+v", got)
+	// log.Printf("walked attrs %+v", diag)
 
 	return nil
 }

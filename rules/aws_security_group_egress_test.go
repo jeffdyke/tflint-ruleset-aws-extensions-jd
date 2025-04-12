@@ -7,16 +7,6 @@ import (
 	"github.com/terraform-linters/tflint-plugin-sdk/helper"
 )
 
-// t.Helper()
-//
-//	switch expected.(type) {
-//	case string:
-//	    if expected != actual {
-//	        t.Errorf("Error:\nexpected: %s\nactual: %s", expected, actual)
-//	    }
-//	default:
-//	    t.Errorf("Unsupported type")
-//	}
 func Test_AwsSecurityGroupEgress(t *testing.T) {
 	tests := []struct {
 		Name     string
@@ -35,17 +25,22 @@ resource "aws_security_group_rule" "this" {
 			Expected: helper.Issues{},
 		},
 		{
-			Name: "No variables for cidr",
+			Name: "Do not share egress with common",
 			Content: `
+locals {
+			common = {
+				public_cidr = "foo"
+			}
+}
 resource "aws_security_group" "this" {
 	egress {
-	  cidr_blocks = ""
+	  cidr_blocks = local.common.public_cidr
 	}
 }`,
 			Expected: helper.Issues{
 				{
 					Rule:    NewAwsSecurityGroupEgressTypeRule(),
-					Message: "\"cidr_blocks\" can't be empty",
+					Message: "Do not share egress with common",
 					Range: hcl.Range{
 						Filename: "resource.tf",
 						Start:    hcl.Pos{Line: 3, Column: 2},
