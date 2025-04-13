@@ -45,6 +45,30 @@ func (r *AwsSecurityGroupEgressRule) Severity() tflint.Severity {
 func (r *AwsSecurityGroupEgressRule) Link() string {
 	return project.ReferenceLink(r.Name())
 }
+func (r *AwsSecurityGroupEgressRule) PathChecker(runner tflint.Runner, attrs *hclext.Attribute) error {
+	// log.Printf("Path is %s", path)
+	rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
+	var pathParts []string
+	for _, t := range rt {
+		root := t.(hcl.TraverseAttr)
+		pathParts = append(pathParts, root.Name)
+	}
+	path := strings.Join(pathParts, ".")
+	if path == "" {
+		runner.EmitIssue(
+			r,
+			"egress can not be empty",
+			attrs.Range,
+		)
+	} else if strings.HasPrefix(path, "module.common") {
+		runner.EmitIssue(
+			r,
+			"Do not share egress with common",
+			attrs.Range,
+		)
+	}
+	return nil
+}
 
 // Check checks whether ...
 func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
@@ -69,29 +93,8 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 
 	for _, block := range resources.Blocks {
 		for _, attrs := range block.Body.Blocks.OfType(r.subResourceType)[0].Body.Attributes {
-			rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
 
-			var pathParts []string
-			for _, t := range rt {
-				root := t.(hcl.TraverseAttr)
-				pathParts = append(pathParts, root.Name)
-			}
-			path := strings.Join(pathParts, ".")
-			// log.Printf("Path is %s", path)
-			if path == "" {
-				runner.EmitIssue(
-					r,
-					"egress can not be empty",
-					attrs.Range,
-				)
-				return nil
-			} else if strings.HasPrefix(path, "module.common") {
-				runner.EmitIssue(
-					r,
-					"Do not share egress with common",
-					attrs.Range,
-				)
-			}
+			r.PathChecker(runner, attrs)
 
 		}
 	}
