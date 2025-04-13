@@ -3,7 +3,6 @@ package rules
 import (
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
 	"github.com/terraform-linters/tflint-plugin-sdk/tflint"
 	"github.com/terraform-linters/tflint-ruleset-terraform/project"
@@ -45,29 +44,17 @@ func (r *AwsSecurityGroupEgressRule) Severity() tflint.Severity {
 func (r *AwsSecurityGroupEgressRule) Link() string {
 	return project.ReferenceLink(r.Name())
 }
-func (r *AwsSecurityGroupEgressRule) ExpressionAttributes(attrs *hclext.Attribute) []hcl.TraverseAttr {
-	var res []hcl.TraverseAttr
-	rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
 
-	for _, t := range rt {
-		res = append(res, t.(hcl.TraverseAttr))
+func (r *AwsSecurityGroupEgressRule) EgressPathTest(runner tflint.Runner, attrs *hclext.Attribute) error {
+	err, parsedAttrs := ExpressionAttributes(attrs)
+	if err != nil {
+		runner.EmitIssue(
+			r,
+			"Failed to parse attributes",
+			attrs.Range,
+		)
 	}
-	return res
-}
-func (r *AwsSecurityGroupEgressRule) ConcatName(lt []hcl.TraverseAttr, separator string) string {
-	if separator == "" {
-		separator = "."
-	}
-	var res []string
-	for _, t := range lt {
-		res = append(res, t.Name)
-	}
-	return strings.Join(res, separator)
-}
-func (r *AwsSecurityGroupEgressRule) PathChecker(runner tflint.Runner, attrs *hclext.Attribute) error {
-	// log.Printf("Path is %s", path)
-	parsedAttrs := r.ExpressionAttributes(attrs)
-	path := r.ConcatName(parsedAttrs, ".")
+	path := ConcatName(parsedAttrs, ".")
 	if path == "" {
 		runner.EmitIssue(
 			r,
@@ -86,7 +73,6 @@ func (r *AwsSecurityGroupEgressRule) PathChecker(runner tflint.Runner, attrs *hc
 
 // Check evaluates the content of the egress value and applies rules
 func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
-	// resourceFile := "resource.tf"
 
 	resources, err := runner.GetResourceContent(r.resourceType, &hclext.BodySchema{
 		Blocks: []hclext.BlockSchema{
@@ -107,7 +93,7 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 
 	for _, block := range resources.Blocks {
 		for _, attrs := range block.Body.Blocks.OfType(r.subResourceType)[0].Body.Attributes {
-			r.PathChecker(runner, attrs)
+			r.EgressPathTest(runner, attrs)
 		}
 	}
 	return nil
