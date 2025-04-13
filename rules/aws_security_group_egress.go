@@ -70,7 +70,7 @@ func (r *AwsSecurityGroupEgressRule) PathChecker(runner tflint.Runner, attrs *hc
 	return nil
 }
 
-// Check checks whether ...
+// Check evaluates the content of the egress value and applies rules
 func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 	// resourceFile := "resource.tf"
 
@@ -93,11 +93,8 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 
 	for _, block := range resources.Blocks {
 		for _, attrs := range block.Body.Blocks.OfType(r.subResourceType)[0].Body.Attributes {
-
 			r.PathChecker(runner, attrs)
-
 		}
 	}
-
 	return nil
 }
