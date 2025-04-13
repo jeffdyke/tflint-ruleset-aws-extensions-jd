@@ -45,15 +45,29 @@ func (r *AwsSecurityGroupEgressRule) Severity() tflint.Severity {
 func (r *AwsSecurityGroupEgressRule) Link() string {
 	return project.ReferenceLink(r.Name())
 }
+func (r *AwsSecurityGroupEgressRule) ExpressionAttributes(attrs *hclext.Attribute) []hcl.TraverseAttr {
+	var res []hcl.TraverseAttr
+	rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
+
+	for _, t := range rt {
+		res = append(res, t.(hcl.TraverseAttr))
+	}
+	return res
+}
+func (r *AwsSecurityGroupEgressRule) ConcatName(lt []hcl.TraverseAttr, separator string) string {
+	if separator == "" {
+		separator = "."
+	}
+	var res []string
+	for _, t := range lt {
+		res = append(res, t.Name)
+	}
+	return strings.Join(res, separator)
+}
 func (r *AwsSecurityGroupEgressRule) PathChecker(runner tflint.Runner, attrs *hclext.Attribute) error {
 	// log.Printf("Path is %s", path)
-	rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
-	var pathParts []string
-	for _, t := range rt {
-		root := t.(hcl.TraverseAttr)
-		pathParts = append(pathParts, root.Name)
-	}
-	path := strings.Join(pathParts, ".")
+	parsedAttrs := r.ExpressionAttributes(attrs)
+	path := r.ConcatName(parsedAttrs, ".")
 	if path == "" {
 		runner.EmitIssue(
 			r,
