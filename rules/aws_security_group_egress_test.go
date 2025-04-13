@@ -25,9 +25,29 @@ resource "aws_security_group_rule" "this" {
 			Expected: helper.Issues{},
 		},
 		{
+			Name: "egress can not be empty",
+			Content: `
+resource "aws_security_group" "this" {
+	egress {
+	  cidr_blocks = ""
+	}
+}`,
+			Expected: helper.Issues{
+				{
+					Rule:    NewAwsSecurityGroupEgressTypeRule(),
+					Message: "egress can not be empty",
+					Range: hcl.Range{
+						Filename: "resource.tf",
+						Start:    hcl.Pos{Line: 4, Column: 4},
+						End:      hcl.Pos{Line: 4, Column: 20},
+					},
+				},
+			},
+		},
+		{
 			Name: "Do not share egress with common",
 			Content: `
-locals {
+module {
 			common = {
 				public_cidr = "foo"
 			}

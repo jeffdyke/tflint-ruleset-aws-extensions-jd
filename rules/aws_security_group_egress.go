@@ -66,34 +66,26 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 	if err != nil {
 		return err
 	}
-	// got := []string{}
-
-	// diag := resources.WalkAttributes(func(a *Attribute) &hcl.Diagnostics {
-
-	// 	got = append(got, a.Name)
-	// 	return nil
-	// })
-	type TraverseLocal struct {
-		isTraverser struct{}
-		Name        string
-		SrcRange    string
-	}
-
-	// var l []TraverseLocal
 
 	for _, block := range resources.Blocks {
-		for _, attrs := range block.Body.Blocks.OfType("egress")[0].Body.Attributes {
-			rt, d := hcl.RelTraversalForExpr(attrs.Expr)
-			if d.HasErrors() {
-				panic(d.Error())
-			}
+		for _, attrs := range block.Body.Blocks.OfType(r.subResourceType)[0].Body.Attributes {
+			rt, _ := hcl.RelTraversalForExpr(attrs.Expr)
+
 			var pathParts []string
 			for _, t := range rt {
 				root := t.(hcl.TraverseAttr)
 				pathParts = append(pathParts, root.Name)
 			}
 			path := strings.Join(pathParts, ".")
-			if strings.HasPrefix(path, "module.common") {
+			// log.Printf("Path is %s", path)
+			if path == "" {
+				runner.EmitIssue(
+					r,
+					"egress can not be empty",
+					attrs.Range,
+				)
+				return nil
+			} else if strings.HasPrefix(path, "module.common") {
 				runner.EmitIssue(
 					r,
 					"Do not share egress with common",
@@ -103,13 +95,6 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 
 		}
 	}
-	// got := []string{}
-	// diag := resources.WalkAttributes(func(a *Attribute) hcl.Diagnostics {
-	// 	got = append(got, a.Name)
-	// 	return nil
-	// })
-	// log.Printf("walked attrs %+v", got)
-	// log.Printf("walked attrs %+v", diag)
 
 	return nil
 }
