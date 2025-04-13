@@ -34,7 +34,7 @@ locals {
 }
 resource "aws_security_group" "this" {
 	egress {
-	  cidr_blocks = local.common.public_cidr
+	  cidr_blocks = module.common.public_cidr
 	}
 }`,
 			Expected: helper.Issues{
@@ -43,8 +43,8 @@ resource "aws_security_group" "this" {
 					Message: "Do not share egress with common",
 					Range: hcl.Range{
 						Filename: "resource.tf",
-						Start:    hcl.Pos{Line: 3, Column: 2},
-						End:      hcl.Pos{Line: 3, Column: 8},
+						Start:    hcl.Pos{Line: 9, Column: 4},
+						End:      hcl.Pos{Line: 9, Column: 43},
 					},
 				},
 			},

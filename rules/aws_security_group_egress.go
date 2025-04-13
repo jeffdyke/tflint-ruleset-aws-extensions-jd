@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"log"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/terraform-linters/tflint-plugin-sdk/hclext"
@@ -83,18 +83,23 @@ func (r *AwsSecurityGroupEgressRule) Check(runner tflint.Runner) error {
 
 	for _, block := range resources.Blocks {
 		for _, attrs := range block.Body.Blocks.OfType("egress")[0].Body.Attributes {
-			log.Printf("CIDR: %+v\n\n", attrs.Expr.Variables()[0])
 			rt, d := hcl.RelTraversalForExpr(attrs.Expr)
+			if d.HasErrors() {
+				panic(d.Error())
+			}
+			var pathParts []string
 			for _, t := range rt {
 				root := t.(hcl.TraverseAttr)
-				log.Printf("RT BITCH: %+v\n", root.Name)
+				pathParts = append(pathParts, root.Name)
 			}
-
-			log.Printf("Item: %+v\n", d)
-			// for _, item := range attrs.Expr.Variables()[0] {
-			// 	get, _ := item.TraversalStep(cty.Value{})
-			// 	log.Printf("Item: %+v\n", get)
-			// }
+			path := strings.Join(pathParts, ".")
+			if strings.HasPrefix(path, "module.common") {
+				runner.EmitIssue(
+					r,
+					"Do not share egress with common",
+					attrs.Range,
+				)
+			}
 
 		}
 	}
